@@ -17,7 +17,7 @@
 
 # Shell used by make to exectute commands (must be first)
 #
-                     SHELL = /bin/sh
+                     SHELL = /bin/bash
 
 # These variables make things verbose or not
 #
@@ -112,7 +112,7 @@ endif
                     MOUNT := /bin/mount
                    UMOUNT := /bin/umount
                     TOUCH := /usr/bin/touch
-                      SED := /usr/bin/sed
+                      SED := sed
                       AWK := /usr/bin/awk
                    PYTHON := /usr/bin/python
                       CMP := /usr/bin/cmp

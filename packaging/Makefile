@@ -51,6 +51,30 @@ include ../Makefile.common
        RPMBUILD_CONTENT_MD5_FILE  = $(OBJDIR)/rpmcontent.md5
                  DOCKER_BUILDDIR  = $(OBJDIR)/dockerbuild
 
+                   DEBBUILD_NAME ?= storageos
+                  DEBBUILD_FORCE ?= FORCE
+
+               DEBBUILD_DEB_ARCH := x86_64
+     DEBBUILD_DEB_ARCH_FORMATTED := amd64
+               DEBBUILD_DEBS_DIR  = $(BUILD_BASE)/DEBS
+                    DEB_REVISION := 1
+               DEBBUILD_DEB_FILE  = $(DEBBUILD_DEBS_DIR)/$(DEBBUILD_DEB_ARCH)/$(DEBBUILD_NAME)-$(PRODUCT_VERSION).$(PRODUCT_RELEASE)-$(DEB_REVISION).$(DEBBUILD_DEB_ARCH).deb
+               DEBBUILD_BUILDDIR  = $(OBJDIR)/debbuild
+                DEBBUILD_TMP_DIR  = $(DEBBUILD_BUILDDIR)
+                    DEBBUILD_LOG  = $(DEBBUILD_BUILDDIR)/debbuild.log
+              DEBBUILD_BUILDROOT  = $(DEBBUILD_BUILDDIR)/$(DEBBUILD_NAME)-$(PRODUCT_VERSION).$(PRODUCT_RELEASE)-$(DEB_REVISION).$(DEBBUILD_DEB_ARCH)
+         DEBBUILD_SRC_CONTROLDIR  = $(SOURCE_BASE)/packaging/deb-oss
+      DEBBUILD_TARGET_CONTROLDIR  = $(DEBBUILD_BUILDROOT)/DEBIAN
+    DEBBUILD_TARGET_CONTROL_FILE  = $(DEBBUILD_TARGET_CONTROLDIR)/control
+            DEBBUILD_CONTROL_FILE = control
+                DEBBUILD_MD5_FILE = md5sums
+              DEBBUILD_PRERM_FILE = prerm
+            DEBBUILD_PREINST_FILE = 
+             DEBBUILD_POSTRM_FILE = postrm
+           DEBBUILD_POSTINST_FILE = postinst
+            DEBBUILD_CONTROL_DEPS = $(DEBBUILD_SRC_CONTROLDIR)/$(DEBBUILD_CONTROL_FILE) $(DEBBUILD_SRC_CONTROLDIR)/$(DEBBUILD_MD5_FILE) $(DEBBUILD_SRC_CONTROLDIR)/$(DEBBUILD_PRERM_FILE) $(DEBBUILD_SRC_CONTROLDIR)/$(DEBBUILD_POSTRM_FILE) $(DEBBUILD_SRC_CONTROLDIR)/$(DEBBUILD_POSTINST_FILE)
+
+
  OVFBUILD_CONTROLLER_L_VCPU_CNT := 4
 OVFBUILD_CONTROLLER_L_MEMORY_MB := 16384
     OVFBUILD_CONTROLLER_L_FLAGS  = vcpu_count=$(OVFBUILD_CONTROLLER_L_VCPU_CNT) memory_mb=$(OVFBUILD_CONTROLLER_L_MEMORY_MB)
@@ -986,6 +1010,61 @@ clean:: clean-rpm
 clobber::
 	$(ATSIGN)$(RM) -r $(RPMBUILD_RPMS_DIR)
 
+# DEB section
+#
+.PHONY: deb clean-deb 
+
+deb: $(DEBBUILD_DEB_FILE)
+
+$(DEBBUILD_DEB_FILE): $(DEBBUILD_CONTROL_DEPS)
+	@$(ECHO) "Building storageos Debian package (release $(PRODUCT_VERSION).$(PRODUCT_RELEASE))"
+	$(ATSIGN)$(RM)    $(@)
+	$(ATSIGN)$(RM) -r       $(DEBBUILD_BUILDDIR) 
+	$(ATSIGN)$(MKDIR) $(@D) $(DEBBUILD_BUILDDIR) $(DEBBUILD_TARGET_CONTROLDIR)
+	@$(ECHO) "Installing source files in $(DEBBUILD_BUILDROOT)..."
+	$(ATSIGN)$(MAKE) _install INSTALL_PREFIX="$(DEBBUILD_BUILDROOT)"
+	@$(ECHO) "Removing non debian directories and files..."
+	$(ATSIGN)$(RM) -r $(DEBBUILD_BUILDROOT)/etc/boot-ovfenv.conf $(DEBBUILD_BUILDROOT)/etc/nginx.conf
+	$(ATSIGN)$(RM) -r $(DEBBUILD_BUILDROOT)/etc/systemd
+	$(ATSIGN)$(RM) -r $(DEBBUILD_BUILDROOT)/etc/sysconfig/SuSE*
+	@$(ECHO) "Creating Debian init files.."
+	$(ATSIGN)$(MKDIR) $(DEBBUILD_BUILDROOT)/etc/init
+	$(ATSIGN)$(CP) 	$(SOURCE_BASE)/etc/init/nginx.conf $(DEBBUILD_BUILDROOT)/etc/init/
+	$(ATSIGN)for svc in api auth controller coordinator db geo geodb portal sa sys; do \
+		sed -e "s,@svcname@,$$svc,g" $(SOURCE_BASE)/etc/init/storageos-template.conf > $(DEBBUILD_BUILDROOT)/etc/init/storageos-$$svc.conf; \
+	done
+	@$(ECHO) "Creating $(DEBBUILD_TARGET_CONTROL_FILE).."
+	$(ATSIGN)$(MAKE) $(DEBBUILD_TARGET_CONTROL_FILE)
+	@$(ECHO) "Copying $(DEBBUILD_PRERM_FILE),$(DEBBUILD_POSTRM_FILE),$(DEBBUILD_POSTINST_FILE) files.."
+	$(ATSIGN)$(CP) 	$(DEBBUILD_SRC_CONTROLDIR)/$(DEBBUILD_PRERM_FILE) $(DEBBUILD_TARGET_CONTROLDIR)/
+	$(ATSIGN)$(CP) 	$(DEBBUILD_SRC_CONTROLDIR)/$(DEBBUILD_POSTRM_FILE) $(DEBBUILD_TARGET_CONTROLDIR)/
+	$(ATSIGN)$(CP) 	$(DEBBUILD_SRC_CONTROLDIR)/$(DEBBUILD_POSTINST_FILE) $(DEBBUILD_TARGET_CONTROLDIR)/
+	@$(ECHO) "Changing scripts with right bash, java home etc. env variables .."
+	$(ATSIGN)for dir in "opt/storageos/bin" "etc/genconfig.d" "etc/storageos/"; do \
+		sed -i 's/#!\/bin\/sh/#!\/bin\/bash/g' $(DEBBUILD_BUILDROOT)/$$dir/*; \
+		sed -i "s/^export JAVA_HOME=.*$$/export JAVA_HOME=\/usr\/lib\/jvm\/java-8-openjdk-amd64\/jre/g" $(DEBBUILD_BUILDROOT)/$$dir/*; \
+		sed -i "s/\/usr\/bin\/sed/\/bin\/sed/g" $(DEBBUILD_BUILDROOT)/$$dir/*; \
+	done
+	@$(ECHO) "Creating $(DEBBUILD_TARGET_CONTROLDIR)/$(DEBBUILD_MD5_FILE) file.."
+	$(ATSIGN)$(FIND) $(DEBBUILD_BUILDDIR) -type f ! -regex '.*.hg.*' ! -regex '.*?debian-binary.*' ! -regex '.*?DEBIAN.*' -printf '"'"$(DEBBUILD_BUILDDIR)/"'%P" ' | xargs md5sum | $(SED) -e "s#$(DEBBUILD_BUILDROOT)/##g" > $(DEBBUILD_TARGET_CONTROLDIR)/$(DEBBUILD_MD5_FILE)
+	@$(ECHO) "Building Debian Packaging using $(DEBBUILD) -b $(DEBBUILD_BUILDROOT) $(DEBBUILD_FLAGS).."
+	$(ATSIGN)dpkg-deb -b $(DEBBUILD_BUILDROOT) $(DEBBUILD_FLAGS) $(TEEOUT) $(DEBBUILD_LOG)
+	$(ATSIGN)$(MV) $(DEBBUILD_BUILDDIR)/$(notdir $@) $@
+	@[ -f "$(@)" ] || { echo "debbuild failed!"; exit 1 ; }
+	@echo "***"
+	@echo "*** $(DEBBUILD_NAME) DEB:"
+	@echo "***    $(@)"
+	@echo "***"
+
+$(DEBBUILD_TARGET_CONTROL_FILE): $(DEBBUILD_SRC_CONTROLDIR)/$(DEBBUILD_MD5_FILE)
+	$(ATSIGN)$(SED) -e "s#<<package>>#$(DEBBUILD_NAME)#g" \
+               -e "s#<<version>>#$(PRODUCT_VERSION).$(PRODUCT_RELEASE)-$(DEB_REVISION)#g" \
+               -e "s#<<architecture>>#$(DEBBUILD_DEB_ARCH_FORMATTED)#g" \
+               -e "s#<<description>>#$(DEBBUILD_NAME)-$(PRODUCT_VERSION).$(PRODUCT_RELEASE)-$(DEB_REVISION)#g" \
+	       $(DEBBUILD_SRC_CONTROLDIR)/$(DEBBUILD_CONTROL_FILE) > $(DEBBUILD_TARGET_CONTROL_FILE)
+
+deb-clean:
+	$(ATSIGN)$(RM) -r $(DEBBUILD_DEB_FILE) $(DEBBUILD_BUILDDIR)
 
 # Handy hack
 #
@@ -1001,3 +1080,4 @@ clobber::
 
 # END $Rev: XXX $
 
+print-%  : ; @echo $* = $($*)

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Copyright (c) 2012 EMC Corporation
 # All Rights Reserved
@@ -50,7 +50,7 @@ _set_storageos_variable() {
 
 _setSysconfigEnv() {
 
-    /sbin/findfs UID="3c426f75-726e-6520-2f6f-7666656e763e" >/dev/null 2>&1 && STORAGEOS_BOOT_MODE=config
+    /sbin/findfs UUID="3c426f75-726e-6520-2f6f-7666656e763e" >/dev/null 2>&1 && STORAGEOS_BOOT_MODE=config
 
     for arg in $(</proc/cmdline) ; do
         case ${arg} in
