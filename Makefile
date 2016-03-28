@@ -1,6 +1,6 @@
 #-%emc-cr-s-shell-v2%-
 #
-# Copyright (c) 2012-2014, EMC Corporation. All Rights Reserved.
+# Copyright (c) 2012-2016, EMC Corporation. All Rights Reserved.
 #
 # This software contains the intellectual property of EMC Corporation
 # or is licensed to EMC Corporation from third parties.
@@ -27,8 +27,8 @@ all clean::
 
 # Local installation and building RPM, OVF and ISO packages
 #
-.PHONY: _install rpm ovf ova vsphere hyperv iso docker svt controller devkit
-_install rpm ovf ova vsphere hyperv iso docker svt controller: all
+.PHONY: _install rpm deb ovf ova vsphere hyperv iso docker svt controller devkit
+_install rpm deb ovf ova vsphere hyperv iso docker svt controller: all
 	$(ATSIGN)$(MAKE) -C packaging $(@)
 devkit:
 	$(ATSIGN)$(MAKE) -C packaging $(@)
