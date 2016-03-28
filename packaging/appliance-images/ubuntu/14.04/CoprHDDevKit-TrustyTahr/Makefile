@@ -10,11 +10,11 @@ export KERNEL := 3.19.0-25-generic
 WORKSPACE := $(shell pwd)
 SHELL := /bin/bash
 NAME := CoprHDDevKit-TrustyTahr
-VERSION := 2.5.0.0
+VERSION := 3.0.0.0
 JOB := 999
 VENDOR := EMC
-ISO_FILE := ubuntu-14.04.3-server-amd64.iso
-ISO_URL := http://releases.ubuntu.com/14.04.3/$(ISO_FILE)
+ISO_FILE := ubuntu-14.04.4-server-amd64.iso
+ISO_URL := http://releases.ubuntu.com/14.04.4/$(ISO_FILE)
 RAM := 8192
 RAM := 2048
 MAC := $(shell printf "00%02X%02X%02X%02X%02X" $$[RANDOM%256] $$[RANDOM%256] $$[RANDOM%256] $$[RANDOM%256] $$[RANDOM%256])
@@ -72,7 +72,7 @@ endef
 downloadISO:
 	$(call targetLog,+)
 	mkdir -p $(ISO_MOUNT)
-	[ ! -f /disks/adgbuild/UBUNTU14.04.3/$(ISO_FILE) ] || ln -fs /disks/adgbuild/UBUNTU14.04.3/$(ISO_FILE) $(WORKSPACE)/iso/
+	[ ! -f /disks/adgbuild/UBUNTU14.04/$(ISO_FILE) ] || ln -fs /disks/adgbuild/UBUNTU14.04/$(ISO_FILE) $(WORKSPACE)/iso/
 	[ -s $(WORKSPACE)/iso/$(ISO_FILE) ] || wget $(ISO_URL) --continue --progress=bar --output-document=$(WORKSPACE)/iso/$(ISO_FILE)
 	$(call targetLog,-)
 
@@ -112,7 +112,7 @@ destroy:
 	$(call targetLog,-)
 
 #appliance: | vbox ovf vhd vmx box tbz qcow2
-appliance: | ovf box
+appliance: | ovf vmx box
 	$(call targetLog,+)
 	chmod a+r $(BUILD_DIR)/*
 	$(call targetLog,-)
