@@ -951,6 +951,10 @@ _install::
 	$(ATECHO) cp -a etc
 	$(ATSIGN)$(MKDIR) $(INSTALL_PREFIX)/etc
 	$(ATSIGN)$(CP) -a $(BUILD_BASE)/etc                    $(INSTALL_PREFIX)/
+ifeq ($(OS_DISTRO),trusty-tahr)
+	$(ATECHO) cp -a trusty-tahr
+	$(ATSIGN)$(CP) -a $(BUILD_BASE)/etc/trusty-tahr/*          $(INSTALL_PREFIX)/etc/
+endif
 ifeq ($(BUILD_TYPE),emc)
 	$(ATECHO) cp -a connectemc
 	$(ATSIGN)$(MKDIR) $(INSTALL_PREFIX)/opt/connectemc
@@ -1027,12 +1031,10 @@ $(DEBBUILD_DEB_FILE): $(DEBBUILD_CONTROL_DEPS)
 	$(ATSIGN)$(RM) -r $(DEBBUILD_BUILDROOT)/etc/boot-ovfenv.conf $(DEBBUILD_BUILDROOT)/etc/nginx.conf
 	$(ATSIGN)$(RM) -r $(DEBBUILD_BUILDROOT)/etc/systemd
 	$(ATSIGN)$(RM) -r $(DEBBUILD_BUILDROOT)/etc/sysconfig/SuSE*
-	@$(ECHO) "Creating Debian init files.."
-	$(ATSIGN)$(MKDIR) $(DEBBUILD_BUILDROOT)/etc/init
-	$(ATSIGN)$(CP) 	$(SOURCE_BASE)/etc/init/nginx.conf $(DEBBUILD_BUILDROOT)/etc/init/
 	$(ATSIGN)for svc in api auth controller coordinator db geo geodb portal sa sys; do \
-		sed -e "s,@svcname@,$$svc,g" $(SOURCE_BASE)/etc/init/storageos-template.conf > $(DEBBUILD_BUILDROOT)/etc/init/storageos-$$svc.conf; \
+		sed -e "s,@svcname@,$$svc,g" $(DEBBUILD_BUILDROOT)/etc/init/storageos-template.conf > $(DEBBUILD_BUILDROOT)/etc/init/storageos-$$svc.conf; \
 	done
+	$(ATSIGN)$(RM) -r $(DEBBUILD_BUILDROOT)/etc/init/storageos-template.conf
 	@$(ECHO) "Creating $(DEBBUILD_TARGET_CONTROL_FILE).."
 	$(ATSIGN)$(MAKE) $(DEBBUILD_TARGET_CONTROL_FILE)
 	@$(ECHO) "Copying $(DEBBUILD_PRERM_FILE),$(DEBBUILD_POSTRM_FILE),$(DEBBUILD_POSTINST_FILE) files.."
