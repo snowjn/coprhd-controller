@@ -816,29 +816,45 @@ clean-base:
 .PHONY: controller devkit clean-controller clean-devkit
 
 controller:
-	$(ATECHO) controller alias - [BUILD_TYPE:$(BUILD_TYPE) - PRODUCT_VERSION:$(PRODUCT_VERSION) - PRODUCT_RELEASE:$(PRODUCT_RELEASE)]
+	$(ATECHO) controller alias - [BUILD_TYPE:$(BUILD_TYPE) - PRODUCT_VERSION:$(PRODUCT_VERSION) - PRODUCT_RELEASE:$(PRODUCT_RELEASE) - OS_DISTRO:$(OS_DISTRO)]
 ifeq ($(BUILD_TYPE),oss)
+ifeq ($(OS_DISTRO),trusty-tahr)
+	$(ATSIGN)$(MAKE) -C appliance-images/ubuntu/14.04/CoprHD-TrustyTahr appliance VERSION=$(PRODUCT_VERSION) JOB=$(PRODUCT_RELEASE) SOURCE_DEB=../../../../../build/DEBS/x86_64/storageos-$(PRODUCT_VERSION).$(PRODUCT_RELEASE)-1.x86_64.deb
+else
 	$(ATSIGN)$(MAKE) -C appliance-images/openSUSE/13.2/CoprHD appliance VERSION=$(PRODUCT_VERSION) JOB=$(PRODUCT_RELEASE) SOURCE_RPM=../../../../../build/RPMS/x86_64/storageos-$(PRODUCT_VERSION).$(PRODUCT_RELEASE)-1.x86_64.rpm
+endif
 else
 	$(ATECHO) Cannot generate controller image in emc mode, specify BUILD_TYPE=oss instead
 endif
 
 clean-controller:
 ifeq ($(BUILD_TYPE),oss)
+ifeq ($(OS_DISTRO),trusty-tahr)
+	$(ATSIGN)$(MAKE) -C appliance-images/ubuntu/14.04/CoprHD-TrustyTahr clean VERSION=$(PRODUCT_VERSION) JOB=$(PRODUCT_RELEASE)
+else
 	$(ATSIGN)$(MAKE) -C appliance-images/openSUSE/13.2/CoprHD clean VERSION=$(PRODUCT_VERSION) JOB=$(PRODUCT_RELEASE)
+endif
 endif
 
 devkit:
-	$(ATECHO) devkit alias - [BUILD_TYPE:$(BUILD_TYPE) - PRODUCT_VERSION:$(PRODUCT_VERSION) - PRODUCT_RELEASE:$(PRODUCT_RELEASE)]
+	$(ATECHO) devkit alias - [BUILD_TYPE:$(BUILD_TYPE) - PRODUCT_VERSION:$(PRODUCT_VERSION) - PRODUCT_RELEASE:$(PRODUCT_RELEASE) - OS_DISTRO:$(OS_DISTRO)]
 ifeq ($(BUILD_TYPE),oss)
+ifeq ($(OS_DISTRO),trusty-tahr)
+	$(ATSIGN)$(MAKE) -C appliance-images/ubuntu/14.04/CoprHDDevKit-TrustyTahr appliance VERSION=$(PRODUCT_VERSION) JOB=$(PRODUCT_RELEASE)
+else
 	$(ATSIGN)$(MAKE) -C appliance-images/openSUSE/13.2/CoprHDDevKit appliance VERSION=$(PRODUCT_VERSION) JOB=$(PRODUCT_RELEASE)
+endif
 else
 	$(ATECHO) Cannot generate devkit image in emc mode, specify BUILD_TYPE=oss instead
 endif
 
 clean-devkit:
 ifeq ($(BUILD_TYPE),oss)
+ifeq ($(OS_DISTRO),trusty-tahr)
+	$(ATSIGN)$(MAKE) -C appliance-images/ubuntu/14.04/CoprHDDevKit-TrustyTahr clean VERSION=$(PRODUCT_VERSION) JOB=$(PRODUCT_RELEASE)
+else
 	$(ATSIGN)$(MAKE) -C appliance-images/openSUSE/13.2/CoprHDDevKit clean VERSION=$(PRODUCT_VERSION) JOB=$(PRODUCT_RELEASE)
+endif
 endif
 
 # Clean and clobber
