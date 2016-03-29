@@ -76,6 +76,7 @@ parseOVF()
 
   if [ ! -z "\$hostname" ]; then
     hostname "\$hostname"
+    echo "127.0.0.1 \$hostname" >> /etc/hosts
   fi
 
   if [ ! -f /etc/ovfenv.properties ]; then
