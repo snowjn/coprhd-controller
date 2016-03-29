@@ -23,8 +23,7 @@ include Makefile.subdir
 # Call ant to build/clean java
 #
 all clean::
-	#$(ATSIGN)$(GRADLE) $(BUILD_TYPE_PROPERTY) $(OS_DISTRO_PROPERTY) $(@)
-	echo a
+	$(ATSIGN)$(GRADLE) $(BUILD_TYPE_PROPERTY) $(OS_DISTRO_PROPERTY) $(@)
 
 # Local installation and building RPM, OVF and ISO packages
 #
