@@ -968,8 +968,11 @@ _install::
 	$(ATSIGN)$(MKDIR) $(INSTALL_PREFIX)/etc
 	$(ATSIGN)$(CP) -a $(BUILD_BASE)/etc                    $(INSTALL_PREFIX)/
 ifeq ($(OS_DISTRO),trusty-tahr)
-	$(ATECHO) cp -a trusty-tahr
-	$(ATSIGN)$(CP) -a $(BUILD_BASE)/etc/trusty-tahr/*          $(INSTALL_PREFIX)/etc/
+	$(ATECHO) mv -f trusty-tahr
+	$(ATSIGN)$(MV) -f $(INSTALL_PREFIX)/etc/trusty-tahr/init $(INSTALL_PREFIX)/etc/
+	$(ATSIGN)$(MV) -f $(INSTALL_PREFIX)/etc/trusty-tahr/oss  $(INSTALL_PREFIX)/etc/
+	$(ATSIGN)$(MV) -f $(INSTALL_PREFIX)/etc/trusty-tahr/storageos/storageos $(INSTALL_PREFIX)/etc/storageos/
+	$(ATSIGN)$(RM) -r $(INSTALL_PREFIX)/etc/trusty-tahr
 endif
 ifeq ($(BUILD_TYPE),emc)
 	$(ATECHO) cp -a connectemc
