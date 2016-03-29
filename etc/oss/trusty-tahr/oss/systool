@@ -238,7 +238,14 @@ EOF
 }
 
 _restart() {
-    /usr/bin/systemctl restart storageos-${1%*svc} || _fatal2 67 "Unexpected restart ${1} failure. Error code $?"
+	case $(lsb_release -si) in
+		Ubuntu|Debian|Devuan)
+			restart storageos-${1%*svc} || _fatal2 67 "Unexpected restart ${1} failure. Error code $?"
+			;;
+		*)
+    		/usr/bin/systemctl restart storageos-${1%*svc} || _fatal2 67 "Unexpected restart ${1} failure. Error code $?"
+			;;
+	esac
 }
 
 _reload() {

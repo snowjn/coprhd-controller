@@ -190,6 +190,17 @@ ETCFILES_LINUX = \
     genconfig.d/boot.manifest \
     systool
 
+ifeq ($(OS_DISTRO),trusty-tahr)
+ETCFILES_LINUX += \
+    trusty-tahr/init/boot-ovfenv.conf \
+    trusty-tahr/init/keepalived.conf \
+    trusty-tahr/init/nginx.conf \
+    trusty-tahr/init/storageos-template.conf \
+    trusty-tahr/oss/storageos/boot-ovfenv \
+    trusty-tahr/oss/systool \
+    trusty-tahr/storageos/storageos
+endif
+
 ifeq ($(BUILD_TYPE),emc)
     SYSTEMD_STORAGEOS += vasa
     ETCFILES_ADDITIONAL = $(ETCFILES_APPLIANCE)
