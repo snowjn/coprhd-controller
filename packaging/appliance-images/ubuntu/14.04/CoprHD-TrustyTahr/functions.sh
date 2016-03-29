@@ -181,6 +181,26 @@ function installPackages
   mount --bind ${APT_MOUNT}/var/cache/apt/archives ${DIR_MOUNT}/tmp/archives
   # START MOUNT IMAGE
 
+  chroot ${DIR_MOUNT} groupadd -g 444 storageos
+  chroot ${DIR_MOUNT} useradd -r -d /opt/storageos -c "StorageOS" -g 444 -u 444 -s /bin/bash storageos
+  cat > ${DIR_MOUNT}/etc/rc.status << EOF
+#!/bin/bash
+function rc_reset {
+  /bin/true
+}
+function rc_failed {
+  /bin/true
+}
+function rc_status {
+  /bin/true
+}
+function rc_exit {
+  /bin/true
+}
+EOF
+  chroot ${DIR_MOUNT} chmod a+x /etc/rc.status
+  chroot ${DIR_MOUNT} chown storageos:storageos /etc/rc.status
+
   # START MOUNT SYSTEM
   #mount --bind /dev ${DIR_MOUNT}/dev
   mount --bind /sys ${DIR_MOUNT}/sys
@@ -218,11 +238,10 @@ function installPackages
   umount ${DIR_MOUNT}/dev/pts
   umount ${DIR_MOUNT}/proc
   umount ${DIR_MOUNT}/sys
+  umount ${DIR_MOUNT}/dev
   umount ${DIR_MOUNT}/tmp/archives
   umount ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
   umount ${DIR_MOUNT}
-  rm -fr ${DIR_MOUNT}/tmp/iso
-  rm -fr ${DIR_MOUNT}/tmp/archives
   losetup -d ${LOOP_DISK1}
   losetup -d ${LOOP_DISK0}
   # END MOUNT IMAGE

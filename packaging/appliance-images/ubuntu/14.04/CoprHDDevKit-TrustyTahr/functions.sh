@@ -216,11 +216,10 @@ function installPackages
   umount ${DIR_MOUNT}/dev/pts
   umount ${DIR_MOUNT}/proc
   umount ${DIR_MOUNT}/sys
+  umount ${DIR_MOUNT}/dev
   umount ${DIR_MOUNT}/tmp/archives
   umount ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
   umount ${DIR_MOUNT}
-  rm -fr ${DIR_MOUNT}/tmp/iso
-  rm -fr ${DIR_MOUNT}/tmp/archives
   losetup -d ${LOOP_DISK1}
   losetup -d ${LOOP_DISK0}
   # END MOUNT IMAGE
