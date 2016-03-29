@@ -9,7 +9,7 @@
 export KERNEL := 3.19.0-25-generic
 WORKSPACE := $(shell pwd)
 SHELL := /bin/bash
-NAME := CoprHDDevKit-TrustyTahr
+NAME := CoprHD-TrustyTahr
 VERSION := 3.0.0.0
 JOB := 999
 VENDOR := EMC
@@ -80,7 +80,7 @@ downloadDEB:
 	$(call targetLog,+)
 	mkdir -p $(APT_MOUNT) $(ISO_MOUNT)
 	-mountpoint -q $(ISO_MOUNT) || mount $(WORKSPACE)/iso/$(ISO_FILE) $(ISO_MOUNT)
-	bash functions.sh createCache $(APT_MOUNT) $(ISO_MOUNT) "$(PACKAGES_BOOT) $(PACKAGES_LIST)"
+	bash functions.sh createCache $(APT_MOUNT) $(ISO_MOUNT) $(SOURCE_DEB) "$(PACKAGES_BOOT) $(PACKAGES_LIST)"
 	-umount $(ISO_MOUNT)
 	$(call targetLog,-)
 
@@ -112,7 +112,7 @@ destroy:
 	$(call targetLog,-)
 
 #appliance: | vbox ovf vhd vmx box tbz qcow2
-appliance: | ovf vmx box tbz
+appliance: | ovf vmx box
 	$(call targetLog,+)
 	chmod a+r $(BUILD_DIR)/*
 	$(call targetLog,-)
@@ -168,7 +168,7 @@ $(VMDK): | downloadISO createREPO
 	bash functions.sh formatDisk $(DISK_QEMU) $(DISK_SIZE) $(SWAP_SIZE) $(SECTOR_INIT) $(SECTOR_SIZE)
 	bash functions.sh createBootstrap $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(APT_MOUNT) $(ISO_MOUNT) $(WORKSPACE)
 	bash functions.sh installPackages $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(APT_MOUNT) $(ISO_MOUNT) "$(PACKAGES_BOOT)"
-	bash functions.sh installPackages $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(APT_MOUNT) $(ISO_MOUNT) "$(PACKAGES_LIST)"
+	bash functions.sh installPackages $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(APT_MOUNT) $(ISO_MOUNT) "$(PACKAGES_LIST) storageos"
 	bash functions.sh installBootloader $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(ISO_MOUNT) $(NAME)
 	bash functions.sh installOverlay $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(WORKSPACE)
 	bash functions.sh installConfiguration $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(ISO_MOUNT) $(NAME) $(VERSION) $(JOB)
