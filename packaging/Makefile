@@ -970,7 +970,8 @@ _install::
 ifeq ($(OS_DISTRO),trusty-tahr)
 	$(ATECHO) mv -f trusty-tahr
 	$(ATSIGN)$(MV) -f $(INSTALL_PREFIX)/etc/trusty-tahr/init $(INSTALL_PREFIX)/etc/
-	$(ATSIGN)$(MV) -f $(INSTALL_PREFIX)/etc/trusty-tahr/oss  $(INSTALL_PREFIX)/etc/
+	$(ATSIGN)$(MV) -f $(INSTALL_PREFIX)/etc/trusty-tahr/oss/systool  $(INSTALL_PREFIX)/etc/
+	$(ATSIGN)$(MV) -f $(INSTALL_PREFIX)/etc/trusty-tahr/oss/storageos/boot-ovfenv  $(INSTALL_PREFIX)/etc/storageos/
 	$(ATSIGN)$(MV) -f $(INSTALL_PREFIX)/etc/trusty-tahr/storageos/storageos $(INSTALL_PREFIX)/etc/storageos/
 	$(ATSIGN)$(RM) -r $(INSTALL_PREFIX)/etc/trusty-tahr
 endif
