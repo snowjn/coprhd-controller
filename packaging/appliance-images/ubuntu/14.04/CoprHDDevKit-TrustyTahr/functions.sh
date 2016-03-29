@@ -18,7 +18,6 @@ p
 1
 ${SECTOR_INIT}
 +$((${DISK_SIZE}-${SWAP_SIZE}))G
-a
 t
 83
 n
@@ -152,7 +151,9 @@ UUID=${SWAP}    none    swap    sw      0       0
 EOF
 
   # END MOUNT IMAGE
-  umount -R ${DIR_MOUNT}
+  umount ${DIR_MOUNT}/tmp/archives
+  umount ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
+  umount ${DIR_MOUNT}
   losetup -d ${LOOP_DISK1}
   losetup -d ${LOOP_DISK0}
   # END MOUNT IMAGE
@@ -212,7 +213,12 @@ function installPackages
   # INSTALL PACKAGES
 
   # END MOUNT IMAGE
-  umount -R ${DIR_MOUNT}
+  umount ${DIR_MOUNT}/dev/pts
+  umount ${DIR_MOUNT}/proc
+  umount ${DIR_MOUNT}/sys
+  umount ${DIR_MOUNT}/tmp/archives
+  umount ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
+  umount ${DIR_MOUNT}
   rm -fr ${DIR_MOUNT}/tmp/iso
   rm -fr ${DIR_MOUNT}/tmp/archives
   losetup -d ${LOOP_DISK1}
@@ -262,7 +268,11 @@ EOF
   rm ${DIR_MOUNT}/boot/grub/device.map
 
   # END MOUNT IMAGE
-  umount -R ${DIR_MOUNT}
+  umount ${DIR_MOUNT}/proc
+  umount ${DIR_MOUNT}/sys
+  umount ${DIR_MOUNT}/dev
+  umount ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
+  umount ${DIR_MOUNT}
   losetup -d ${LOOP_DISK1}
   losetup -d ${LOOP_DISK0}
   # END MOUNT IMAGE
@@ -292,7 +302,7 @@ function installVagrant
   chroot ${DIR_MOUNT} chown -R vagrant:vagrant /home/vagrant
 
   # END MOUNT IMAGE
-  umount -R ${DIR_MOUNT}
+  umount ${DIR_MOUNT}
   losetup -d ${LOOP_DISK1}
   losetup -d ${LOOP_DISK0}
   # END MOUNT IMAGE
@@ -321,7 +331,7 @@ function installContainer
   [ -x /usr/bin/pigz ] || tar -c -f ${TBZ} -C ${DIR_MOUNT} -J .
 
   # END MOUNT IMAGE
-  umount -R ${DIR_MOUNT}
+  umount ${DIR_MOUNT}
   losetup -d ${LOOP_DISK1}
   losetup -d ${LOOP_DISK0}
   # END MOUNT IMAGE
@@ -346,7 +356,7 @@ function installOverlay
   [ ! -d ${WORKSPACE}/templates/root ] || cp -pr ${WORKSPACE}/templates/root/* ${DIR_MOUNT}/
 
   # END MOUNT IMAGE
-  umount -R ${DIR_MOUNT}
+  umount ${DIR_MOUNT}
   losetup -d ${LOOP_DISK1}
   losetup -d ${LOOP_DISK0}
   # END MOUNT IMAGE
@@ -397,7 +407,8 @@ EOF
   rm ${DIR_MOUNT}/etc/legal
 
   # END MOUNT IMAGE
-  umount -R ${DIR_MOUNT}
+  umount ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
+  umount ${DIR_MOUNT}
   losetup -d ${LOOP_DISK1}
   losetup -d ${LOOP_DISK0}
   # END MOUNT IMAGE
