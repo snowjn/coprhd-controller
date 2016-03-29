@@ -14,12 +14,13 @@ chmod 500 /etc/nginx/nginx.wrapper
 /sbin/ldconfig /opt/storageos/lib
 
 if [ -z "${DO_NOT_START}" ] ; then
-    /etc/storageos/storageos disable
+    /etc/storageos/storageos enable
     /etc/storageos/boot-ovfenv start
     service keepalived start
     start nginx
     /etc/storageos/storageos start
 else
-    /etc/storageos/storageos enable
+    /etc/storageos/storageos disable
 fi
+
 exit 0
