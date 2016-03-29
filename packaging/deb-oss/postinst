@@ -12,7 +12,7 @@ chown -R 'storageos:storageos' '/var/run/storageos'
 chmod 500 /etc/nginx/nginx.wrapper
 
 /sbin/ldconfig /opt/storageos/lib
-/etc/storageos/storageos enable
+/etc/storageos/storageos disable
     
 if [ -z "${DO_NOT_START}" ] ; then
     /etc/storageos/boot-ovfenv start
