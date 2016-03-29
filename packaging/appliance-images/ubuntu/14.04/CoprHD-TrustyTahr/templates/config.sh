@@ -140,6 +140,7 @@ chmod 755 /etc/init.d/ovf-network
 update-rc.d ovf-network defaults
 update-rc.d ovf-network enable
 rm /etc/network/interfaces
+ln -s /bin/cp /usr/bin/cp
 
 update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
 update-alternatives --set javac /usr/lib/jvm/java-8-openjdk-amd64/bin/javac

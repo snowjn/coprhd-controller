@@ -140,6 +140,7 @@ chmod 755 /etc/init.d/ovf-network
 update-rc.d ovf-network defaults
 update-rc.d ovf-network enable
 rm /etc/network/interfaces
+ln -s /bin/cp /usr/bin/cp
 
 groupadd -g 444 storageos
 useradd -r -d /opt/storageos -c "StorageOS" -g 444 -u 444 -s /bin/bash storageos
