@@ -134,6 +134,9 @@ if [ ! -f /etc/ovfenv.properties ]; then
   mountCDROM
   if [ -f /tmp/cdromOvfEnv/ovf-env.xml ]; then
     parseOVF
+    rm /etc/init/keepalived.override
+    rm /etc/init/nginx.override
+    rm /etc/init/boot-ovfenv.override
     /etc/storageos/storageos enable
     /etc/storageos/boot-ovfenv start
     service keepalived start

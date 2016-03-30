@@ -13,13 +13,16 @@ chmod 500 /etc/nginx/nginx.wrapper
 
 /sbin/ldconfig /opt/storageos/lib
 
-if [ ! -z "${DO_NOT_START}" ] ; then
+if [ -z "${DO_NOT_START}" ] ; then
     /etc/storageos/storageos enable
     /etc/storageos/boot-ovfenv start
     service keepalived start
     start nginx
     /etc/storageos/storageos start
 else
+    echo "manual" > /etc/init/keepalived.override
+    echo "manual" > /etc/init/nginx.override
+    echo "manual" > /etc/init/boot-ovfenv.override
     /etc/storageos/storageos disable
 fi
 
