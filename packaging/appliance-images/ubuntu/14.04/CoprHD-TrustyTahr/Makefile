@@ -16,7 +16,6 @@ VENDOR := EMC
 ISO_FILE := ubuntu-14.04.4-server-amd64.iso
 ISO_URL := http://releases.ubuntu.com/14.04.4/$(ISO_FILE)
 RAM := 8192
-RAM := 2048
 MAC := $(shell printf "00%02X%02X%02X%02X%02X" $$[RANDOM%256] $$[RANDOM%256] $$[RANDOM%256] $$[RANDOM%256] $$[RANDOM%256])
 
 ##################################################
@@ -32,11 +31,11 @@ OVF := $(BUILD_DIR)/$(NAME).x86_64-$(VERSION).$(JOB).ovf
 VHD := $(BUILD_DIR)/$(NAME).x86_64-$(VERSION).$(JOB).vhd
 VMX := $(BUILD_DIR)/$(NAME).x86_64-$(VERSION).$(JOB).vmx
 BOX := $(BUILD_DIR)/$(NAME).x86_64-$(VERSION).$(JOB).box
-TBZ := $(BUILD_DIR)/$(NAME).x86_64-$(VERSION).$(JOB).tbz
+TGZ := $(BUILD_DIR)/$(NAME).x86_64-$(VERSION).$(JOB).tgz
 QCOW2 := $(BUILD_DIR)/$(NAME).x86_64-$(VERSION).$(JOB).qcow2
 
 .DEFAULT: all
-.PHONY: downloadISO downloadDEB downloadTGZ createREPO vbox ovf vhd vmx box tbz qcow2 appliance clean destroy
+.PHONY: downloadISO downloadDEB downloadTGZ createREPO vbox ovf vhd vmx box tgz qcow2 appliance clean destroy
 all: appliance
 
 ##################################################
@@ -80,7 +79,7 @@ downloadDEB:
 	$(call targetLog,+)
 	mkdir -p $(APT_MOUNT) $(ISO_MOUNT)
 	-mountpoint -q $(ISO_MOUNT) || mount $(WORKSPACE)/iso/$(ISO_FILE) $(ISO_MOUNT)
-	bash functions.sh createCache $(APT_MOUNT) $(ISO_MOUNT) $(SOURCE_DEB) "$(PACKAGES_BOOT) $(PACKAGES_LIST)"
+	bash functions.sh createCache $(APT_MOUNT) $(ISO_MOUNT) "$(PACKAGES_BOOT) $(PACKAGES_LIST)" $(SOURCE_DEB)
 	-umount $(ISO_MOUNT)
 	$(call targetLog,-)
 
@@ -95,8 +94,8 @@ createREPO: | downloadISO downloadDEB downloadTGZ
 
 clean:
 	$(call targetLog,+)
-	rm -fr $(WORKSPACE)/build/$(NAME)-$(VERSION).$(JOB)
-	rm -fr $(WORKSPACE)/image/$(JOB)
+	rm -fr $(WORKSPACE)/build
+	rm -fr $(WORKSPACE)/image
 	rm -fr $(WORKSPACE)/output
 	rm -fr $(WORKSPACE)/dir
 	$(call targetLog,-)
@@ -111,8 +110,8 @@ destroy:
 	rm -fr $(WORKSPACE)/apt
 	$(call targetLog,-)
 
-#appliance: | vbox ovf vhd vmx box tbz qcow2
-appliance: | ovf vmx box
+#appliance: | vbox ovf vhd vmx box tgz qcow2
+appliance: | ovf vmx box tgz
 	$(call targetLog,+)
 	chmod a+r $(BUILD_DIR)/*
 	$(call targetLog,-)
@@ -142,7 +141,7 @@ box: | $(BOX)
 	chmod a+r $(BUILD_DIR)/*
 	$(call targetLog,-)
 
-tbz: | $(TBZ)
+tgz: | $(TGZ)
 	$(call targetLog,+)
 	chmod a+r $(BUILD_DIR)/*
 	$(call targetLog,-)
@@ -260,10 +259,10 @@ $(BOX): | $(VMDK)
 	sed -i "s|__RAM__|$(RAM)|g" $(BUILD_DIR)/Vagrantfile
 	$(call targetLog,-)
 
-$(TBZ): | $(VMDK)
+$(TGZ): | $(VMDK)
 	$(call targetLog,+)
 	cp $(DISK_QEMU) $(DISK_QEMU).container
-	bash functions.sh installContainer $(DISK_QEMU).container $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(TBZ)
+	bash functions.sh installContainer $(DISK_QEMU).container $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(TGZ)
 	$(call targetLog,-)
 
 $(QCOW2): | $(VMDK)

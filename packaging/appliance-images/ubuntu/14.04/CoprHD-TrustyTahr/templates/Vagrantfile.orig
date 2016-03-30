@@ -1,10 +1,12 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-# This is an example of a Vagrantfile to boot CoprHDDevKits
+# This is an example of a Vagrantfile to boot CoprHD
+VAGRANTFILE_API_VERSION = "2"
 
-node_ip = "192.168.1.50"
+node_ip = "192.168.1.55"
 gateway = "192.168.1.1"
+netmask = "255.255.255.0"
 
 Vagrant.configure(2) do |config|
   if Vagrant.has_plugin?("vagrant-cachier")
@@ -13,6 +15,7 @@ Vagrant.configure(2) do |config|
 
   config.vm.box = "__NAME__.x86_64-__VERSION__.box"
   config.vm.base_mac = "__MAC__"
+  config.vm.hostname = "__NAME__.lan"
   config.vm.synced_folder ".", "/vagrant", disabled: true
   config.vm.network "public_network", ip: "#{node_ip}"
 
@@ -24,4 +27,7 @@ Vagrant.configure(2) do |config|
   end
 
   config.ssh.username = "vagrant"
+  config.vm.provision "shell", inline: "bash /opt/ADG/conf/configure.sh installNetworkConfigurationFile 2 #{gateway} #{netmask}", run: "once"
+  config.vm.provision "shell", inline: "bash /opt/ADG/conf/configure.sh enableStorageOS", run: "once"
+  config.vm.provision "shell", inline: "bash /opt/ADG/conf/configure.sh waitStorageOS", run: "always"
 end

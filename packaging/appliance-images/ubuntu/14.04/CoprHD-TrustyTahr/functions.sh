@@ -36,8 +36,8 @@ function createCache
 {
   APT_MOUNT=$2
   ISO_MOUNT=$3
-  SOURCE_DEB=$4
-  PACKAGES_LIST="$5"
+  PACKAGES_LIST="$4"
+  SOURCE_DEB="$5"
 
   if [ ! -d ${APT_MOUNT}${ISO_MOUNT} ]; then
     unsquashfs -f -d ${APT_MOUNT} ${ISO_MOUNT}/install/filesystem.squashfs
@@ -52,7 +52,6 @@ deb http://us.archive.ubuntu.com/ubuntu/ trusty main restricted universe
 deb http://security.ubuntu.com/ubuntu trusty-security main
 deb http://ppa.launchpad.net/openjdk-r/ppa/ubuntu trusty main
 deb http://download.virtualbox.org/virtualbox/debian trusty contrib
-deb http://pkg.jenkins-ci.org/debian binary/
 EOF
 
   LANG=C
@@ -61,10 +60,11 @@ EOF
   chroot ${APT_MOUNT} apt-get update
   chroot ${APT_MOUNT} apt-get install -y --force-yes --download-only ${PACKAGES_LIST}
   chroot ${APT_MOUNT} apt-get install -y --force-yes dpkg-dev
-  cp ${SOURCE_DEB} ${APT_MOUNT}/var/cache/apt/archives
+  if [ ! -z "${SOURCE_DEB}" ]; then
+    cp ${SOURCE_DEB} ${APT_MOUNT}/var/cache/apt/archives
+  fi
   chroot ${APT_MOUNT} /bin/bash -x << EOF
 cd /var/cache/apt/archives
-#rm -fr {lock,partial,Packages,Packages.bz2}
 dpkg-scanpackages . > Packages
 bzip2 -kf Packages
 EOF
@@ -80,15 +80,17 @@ function createBootstrap
   APT_MOUNT=$6
   ISO_MOUNT=$7
   WORKSPACE=$8
+  LOOP_DEVICE=$( losetup -f | sed s,/dev/loop,,g )
 
-  LOOP_MAPPER=$( losetup -f | sed "s/dev/dev\/mapper/g" )
   kpartx -as ${DISK_QEMU}
-  mkfs.ext4 ${LOOP_MAPPER}p1
-  mkswap ${LOOP_MAPPER}p4
-  UUID=$( blkid -s UUID -o value ${LOOP_MAPPER}p1 )
-  SWAP=$( blkid -s UUID -o value ${LOOP_MAPPER}p4 )
+  mkfs.ext4 /dev/mapper/loop${LOOP_DEVICE}p1
+  mkswap /dev/mapper/loop${LOOP_DEVICE}p4
+  UUID=$( blkid -s UUID -o value /dev/mapper/loop${LOOP_DEVICE}p1 )
+  SWAP=$( blkid -s UUID -o value /dev/mapper/loop${LOOP_DEVICE}p4 )
   sleep 1
-  kpartx -ds ${DISK_QEMU}
+  dmsetup remove /dev/mapper/loop${LOOP_DEVICE}p1
+  dmsetup remove /dev/mapper/loop${LOOP_DEVICE}p4
+  losetup -d /dev/loop${LOOP_DEVICE}
 
   # START MOUNT IMAGE
   LOOP_DISK0=$( losetup -f )
@@ -102,11 +104,14 @@ function createBootstrap
   unsquashfs -f -d ${DIR_MOUNT} ${ISO_MOUNT}/install/filesystem.squashfs
   chroot ${DIR_MOUNT} locale-gen "en_US.UTF-8"
 
+  mkdir -p ${DIR_MOUNT}/opt/ADG/conf
   mkdir -p ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
   mkdir -p ${DIR_MOUNT}/tmp/archives
   mount --bind ${ISO_MOUNT} ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
   mount --bind ${APT_MOUNT}/var/cache/apt/archives ${DIR_MOUNT}/tmp/archives
   cp -pr ${WORKSPACE}/templates ${DIR_MOUNT}/tmp/
+  mv ${DIR_MOUNT}/tmp/templates/configure.sh ${DIR_MOUNT}/opt/ADG/conf/configure.sh
+  chroot ${DIR_MOUNT} bash /opt/ADG/conf/configure.sh installStorageOS
 
   # UPDATE REPOSITORY
   cat > ${DIR_MOUNT}/etc/apt/sources.list <<EOF
@@ -117,7 +122,6 @@ deb file:/tmp/archives /
 #deb http://security.ubuntu.com/ubuntu trusty-security main
 #deb http://ppa.launchpad.net/openjdk-r/ppa/ubuntu trusty main
 #deb http://download.virtualbox.org/virtualbox/debian trusty contrib
-#deb http://pkg.jenkins-ci.org/debian binary/
 EOF
 
   cat > ${DIR_MOUNT}/etc/apt/preferences <<EOF
@@ -133,10 +137,6 @@ Pin-Priority: 998
 Package: *
 Pin: origin "download.virtualbox.org"
 Pin-Priority: 997
-
-Package: *
-Pin: origin "pkg.jenkins-ci.org"
-Pin-Priority: 996
 EOF
 
   chroot ${DIR_MOUNT} apt-get update
@@ -151,27 +151,6 @@ EOF
 UUID=${UUID}    /       ext4    errors=remount-ro       0       1
 UUID=${SWAP}    none    swap    sw      0       0
 EOF
-
-  cat > ${DIR_MOUNT}/etc/rc.status << EOF
-#!/bin/bash
-function rc_reset {
-  /bin/true
-}
-function rc_failed {
-  /bin/true
-}
-function rc_status {
-  /bin/true
-}
-function rc_exit {
-  /bin/true
-}
-EOF
-
-  chroot ${DIR_MOUNT} chmod a+x /etc/rc.status
-  chroot ${DIR_MOUNT} groupadd -g 444 storageos
-  chroot ${DIR_MOUNT} useradd -r -d /opt/storageos -c "StorageOS" -g 444 -u 444 -s /bin/bash storageos
-  chroot ${DIR_MOUNT} chown storageos:storageos /etc/rc.status
 
   # END MOUNT IMAGE
   umount ${DIR_MOUNT}/tmp/archives
@@ -203,7 +182,6 @@ function installPackages
   # START MOUNT IMAGE
 
   # START MOUNT SYSTEM
-  #mount --bind /dev ${DIR_MOUNT}/dev
   mount --bind /sys ${DIR_MOUNT}/sys
   mount --bind /proc ${DIR_MOUNT}/proc
   mount --bind /dev/pts ${DIR_MOUNT}/dev/pts
@@ -212,13 +190,14 @@ function installPackages
   # INSTALL PACKAGES
   export DO_NOT_START=yes
   chroot ${DIR_MOUNT} apt-get install -y --force-yes ${PACKAGES_LIST}
+  chroot ${DIR_MOUNT} bash /opt/ADG/conf/configure.sh disableStorageOS
   unset DO_NOT_START
   if [ -f ${DIR_MOUNT}/usr/share/virtualbox/VBoxGuestAdditions.iso ]; then
-    chroot ${DIR_MOUNT} mkdir -p /workspace/VBoxGuestAdditions
-    chroot ${DIR_MOUNT} mount -o loop,ro /usr/share/virtualbox/VBoxGuestAdditions.iso /workspace/VBoxGuestAdditions
-    chroot ${DIR_MOUNT} /workspace/VBoxGuestAdditions/VBoxLinuxAdditions.run
-    chroot ${DIR_MOUNT} umount /workspace/VBoxGuestAdditions
-    chroot ${DIR_MOUNT} rm -fr /workspace/VBoxGuestAdditions
+    chroot ${DIR_MOUNT} mkdir -p /tmp/VBoxGuestAdditions
+    chroot ${DIR_MOUNT} mount -o loop,ro /usr/share/virtualbox/VBoxGuestAdditions.iso /tmp/VBoxGuestAdditions
+    chroot ${DIR_MOUNT} /tmp/VBoxGuestAdditions/VBoxLinuxAdditions.run
+    chroot ${DIR_MOUNT} umount /tmp/VBoxGuestAdditions
+    chroot ${DIR_MOUNT} rm -fr /tmp/VBoxGuestAdditions
   fi
   FOUND=1
   while [ "x$FOUND" = "x1" ]; do
@@ -244,6 +223,7 @@ function installPackages
   umount ${DIR_MOUNT}/tmp/archives
   umount ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
   umount ${DIR_MOUNT}
+  ! $( mount | grep -q ${DIR_MOUNT} ) || umount -l ${DIR_MOUNT}
   losetup -d ${LOOP_DISK1}
   losetup -d ${LOOP_DISK0}
   # END MOUNT IMAGE
@@ -316,13 +296,7 @@ function installVagrant
   mount ${LOOP_DISK1} ${DIR_MOUNT}
   # START MOUNT IMAGE
 
-  chroot ${DIR_MOUNT} groupadd vagrant
-  chroot ${DIR_MOUNT} useradd -m -g vagrant -s /bin/bash -d /home/vagrant vagrant
-  chroot ${DIR_MOUNT} mkdir -p /home/vagrant/.ssh
-  echo "127.0.0.1 localhost.localdomain" >> ${DIR_MOUNT}/etc/hosts
-  echo "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA6NF8iallvQVp22WDkTkyrtvp9eWW6A8YVr+kz4TjGYe7gHzIw+niNltGEFHzD8+v1I2YJ6oXevct1YeS0o9HZyN1Q9qgCgzUFtdOKLv6IedplqoPkcmF0aYet2PkEDo3MlTBckFXPITAMzF8dJSIFo9D8HfdOV0IAdx4O7PtixWKn5y2hMNG0zQPyUecp4pzC6kivAIhyfHilFR61RGL+GPXQ2MWZWFYbAGjyiYJnAmCP3NOTd0jMZEnDkbUvxhMmBYSdETk1rRgm+R4LOzFUGaHqHDLKLX+FIPKcF96hrucXzcWyLbIbEgE98OHlnVYCzRdK8jlqm8tehUc9c9WhQ== vagrant insecure public key" > ${DIR_MOUNT}/home/vagrant/.ssh/authorized_keys
-  echo "vagrant ALL=(ALL) NOPASSWD: ALL" >> ${DIR_MOUNT}/etc/sudoers
-  chroot ${DIR_MOUNT} chown -R vagrant:vagrant /home/vagrant
+  chroot ${DIR_MOUNT} bash /opt/ADG/conf/configure.sh installVagrant
 
   # END MOUNT IMAGE
   umount ${DIR_MOUNT}
@@ -337,7 +311,7 @@ function installContainer
   SECTOR_INIT=$3
   SECTOR_SIZE=$4
   DIR_MOUNT=$5
-  TBZ=$6
+  TGZ=$6
 
   # START MOUNT IMAGE
   LOOP_DISK0=$( losetup -f )
@@ -350,8 +324,7 @@ function installContainer
   echo '' > ${DIR_MOUNT}/etc/fstab
   echo 'console"' >> ${DIR_MOUNT}/etc/securetty
   rm -fr ${DIR_MOUNT}/run/*
-  [ ! -x /usr/bin/pigz ] || tar -c -f ${TBZ} -C ${DIR_MOUNT} -I pigz .
-  [ -x /usr/bin/pigz ] || tar -c -f ${TBZ} -C ${DIR_MOUNT} -J .
+  tar -czf ${TGZ} -C ${DIR_MOUNT} .
 
   # END MOUNT IMAGE
   umount ${DIR_MOUNT}
@@ -402,37 +375,17 @@ function installConfiguration
   LOOP_DISK1=$( losetup -f )
   losetup -o $((${SECTOR_SIZE}*${SECTOR_INIT})) ${LOOP_DISK1} ${LOOP_DISK0}
   mount ${LOOP_DISK1} ${DIR_MOUNT}
-  #mount --bind ${ISO_MOUNT} ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
   # START MOUNT IMAGE
 
-  cat << EOF | chroot ${DIR_MOUNT} passwd root
-ChangeMe
-ChangeMe
-EOF
-
-  cat > ${DIR_MOUNT}/etc/motd << EOF
-Have a lot of fun...
-EOF
-
-  # Allow root SSH login
-  if [ -f ${DIR_MOUNT}/etc/ssh/sshd_config ]; then
-    sed -i -e "s/without-password/yes/g" ${DIR_MOUNT}/etc/ssh/sshd_config
-  fi
-
+  echo -n "${NAME}-${VERSION}.${JOB}" > ${DIR_MOUNT}/etc/ImageVersion
   chroot ${DIR_MOUNT} bash /tmp/templates/config.sh
+  chroot ${DIR_MOUNT} /usr/sbin/update-initramfs -u
+
   rm -fr /tmp/templates
   rm -fr ${DIR_MOUNT}/tmp/archives
   rm -fr ${DIR_MOUNT}/tmp/iso
 
-  # Clean up / Updates
-  sed -i -e "s/^#deb/deb/g" ${DIR_MOUNT}/etc/apt/sources.list
-  sed -i -e "/^deb file/d" ${DIR_MOUNT}/etc/apt/sources.list
-  chroot ${DIR_MOUNT} /usr/sbin/update-initramfs -u
-  echo -n "${NAME}-${VERSION}.${JOB}" > ${DIR_MOUNT}/etc/ImageVersion
-  rm ${DIR_MOUNT}/etc/legal
-
   # END MOUNT IMAGE
-  #umount ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
   umount ${DIR_MOUNT}
   losetup -d ${LOOP_DISK1}
   losetup -d ${LOOP_DISK0}
