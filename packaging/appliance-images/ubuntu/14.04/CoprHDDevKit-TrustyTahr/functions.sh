@@ -37,7 +37,6 @@ function createCache
   APT_MOUNT=$2
   ISO_MOUNT=$3
   PACKAGES_LIST="$4"
-  SOURCE_DEB="$5"
 
   if [ ! -d ${APT_MOUNT}${ISO_MOUNT} ]; then
     unsquashfs -f -d ${APT_MOUNT} ${ISO_MOUNT}/install/filesystem.squashfs
@@ -60,9 +59,6 @@ EOF
   chroot ${APT_MOUNT} apt-get update
   chroot ${APT_MOUNT} apt-get install -y --force-yes --download-only ${PACKAGES_LIST}
   chroot ${APT_MOUNT} apt-get install -y --force-yes dpkg-dev
-  if [ ! -z "${SOURCE_DEB}" ]; then
-    cp ${SOURCE_DEB} ${APT_MOUNT}/var/cache/apt/archives
-  fi
   chroot ${APT_MOUNT} /bin/bash -x << EOF
 cd /var/cache/apt/archives
 dpkg-scanpackages . > Packages
@@ -80,6 +76,7 @@ function createBootstrap
   APT_MOUNT=$6
   ISO_MOUNT=$7
   WORKSPACE=$8
+  SOURCE_DEB=$9
   LOOP_DEVICE=$( losetup -f | sed s,/dev/loop,,g )
 
   kpartx -as ${DISK_QEMU}
@@ -111,7 +108,9 @@ function createBootstrap
   mount --bind ${APT_MOUNT}/var/cache/apt/archives ${DIR_MOUNT}/tmp/archives
   cp -pr ${WORKSPACE}/templates ${DIR_MOUNT}/tmp/
   mv ${DIR_MOUNT}/tmp/templates/configure.sh ${DIR_MOUNT}/opt/ADG/conf/configure.sh
-  chroot ${DIR_MOUNT} bash /opt/ADG/conf/configure.sh installStorageOS
+  if [ ! -z "${SOURCE_DEB}" ]; then
+    cp ${SOURCE_DEB} ${DIR_MOUNT}/opt/ADG/conf
+  fi
 
   # UPDATE REPOSITORY
   cat > ${DIR_MOUNT}/etc/apt/sources.list <<EOF
@@ -188,10 +187,7 @@ function installPackages
   # START MOUNT SYSTEM
 
   # INSTALL PACKAGES
-  export DO_NOT_START=yes
   chroot ${DIR_MOUNT} apt-get install -y --force-yes ${PACKAGES_LIST}
-  chroot ${DIR_MOUNT} bash /opt/ADG/conf/configure.sh disableStorageOS
-  unset DO_NOT_START
   if [ -f ${DIR_MOUNT}/usr/share/virtualbox/VBoxGuestAdditions.iso ]; then
     chroot ${DIR_MOUNT} mkdir -p /tmp/VBoxGuestAdditions
     chroot ${DIR_MOUNT} mount -o loop,ro /usr/share/virtualbox/VBoxGuestAdditions.iso /tmp/VBoxGuestAdditions

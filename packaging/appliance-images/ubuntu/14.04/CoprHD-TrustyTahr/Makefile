@@ -79,7 +79,7 @@ downloadDEB:
 	$(call targetLog,+)
 	mkdir -p $(APT_MOUNT) $(ISO_MOUNT)
 	-mountpoint -q $(ISO_MOUNT) || mount $(WORKSPACE)/iso/$(ISO_FILE) $(ISO_MOUNT)
-	bash functions.sh createCache $(APT_MOUNT) $(ISO_MOUNT) "$(PACKAGES_BOOT) $(PACKAGES_LIST)" $(SOURCE_DEB)
+	bash functions.sh createCache $(APT_MOUNT) $(ISO_MOUNT) "$(PACKAGES_BOOT) $(PACKAGES_LIST)"
 	-umount $(ISO_MOUNT)
 	$(call targetLog,-)
 
@@ -111,7 +111,7 @@ destroy:
 	$(call targetLog,-)
 
 #appliance: | vbox ovf vhd vmx box tgz qcow2
-appliance: | ovf vmx box tgz
+appliance: | ovf vmx box tgz qcow2
 	$(call targetLog,+)
 	chmod a+r $(BUILD_DIR)/*
 	$(call targetLog,-)
@@ -156,7 +156,6 @@ $(VMDK): | downloadISO createREPO
 	mkdir -p $(DIR_MOUNT) $(ISO_MOUNT)
 	-mountpoint -q $(ISO_MOUNT) || mount $(WORKSPACE)/iso/$(ISO_FILE) $(ISO_MOUNT)
 
-	rm -fr $(WORKSPACE)/build/$(NAME)-$(VERSION).$(JOB)
 	mkdir -p $(WORKSPACE)/build/$(NAME)-$(VERSION).$(JOB)
 	mkdir -p $(WORKSPACE)/image
 	mkdir -p $(WORKSPACE)/build
@@ -165,9 +164,9 @@ $(VMDK): | downloadISO createREPO
 	qemu-img create -f raw $(DISK_QEMU) $(DISK_SIZE)G
 	echo -e "\x55\xaa" | dd bs=1 count=2 seek=510 of=$(DISK_QEMU) conv=notrunc
 	bash functions.sh formatDisk $(DISK_QEMU) $(DISK_SIZE) $(SWAP_SIZE) $(SECTOR_INIT) $(SECTOR_SIZE)
-	bash functions.sh createBootstrap $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(APT_MOUNT) $(ISO_MOUNT) $(WORKSPACE)
+	bash functions.sh createBootstrap $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(APT_MOUNT) $(ISO_MOUNT) $(WORKSPACE) $(SOURCE_DEB)
 	bash functions.sh installPackages $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(APT_MOUNT) $(ISO_MOUNT) "$(PACKAGES_BOOT)"
-	bash functions.sh installPackages $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(APT_MOUNT) $(ISO_MOUNT) "$(PACKAGES_LIST) storageos"
+	bash functions.sh installPackages $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(APT_MOUNT) $(ISO_MOUNT) "$(PACKAGES_LIST)"
 	bash functions.sh installBootloader $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(ISO_MOUNT) $(NAME)
 	bash functions.sh installOverlay $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(WORKSPACE)
 	bash functions.sh installConfiguration $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(ISO_MOUNT) $(NAME) $(VERSION) $(JOB)
@@ -265,7 +264,26 @@ $(TGZ): | $(VMDK)
 	bash functions.sh installContainer $(DISK_QEMU).container $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(TGZ)
 	$(call targetLog,-)
 
-$(QCOW2): | $(VMDK)
+$(QCOW2): | downloadISO createREPO
 	$(call targetLog,+)
-	qemu-img convert -O qcow2 $(DISK_QEMU) $(QCOW2)
+	mkdir -p $(DIR_MOUNT) $(ISO_MOUNT)
+	-mountpoint -q $(ISO_MOUNT) || mount $(WORKSPACE)/iso/$(ISO_FILE) $(ISO_MOUNT)
+
+	mkdir -p $(WORKSPACE)/build/$(NAME)-$(VERSION).$(JOB)
+	mkdir -p $(WORKSPACE)/image
+	mkdir -p $(WORKSPACE)/build
+	mkdir -p $(WORKSPACE)/output/$(JOB)
+
+	qemu-img create -f raw $(DISK_QEMU).openstack 10G
+	echo -e "\x55\xaa" | dd bs=1 count=2 seek=510 of=$(DISK_QEMU).openstack conv=notrunc
+	bash functions.sh formatDisk $(DISK_QEMU).openstack 10 1 $(SECTOR_INIT) $(SECTOR_SIZE)
+	bash functions.sh createBootstrap $(DISK_QEMU).openstack $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(APT_MOUNT) $(ISO_MOUNT) $(WORKSPACE) $(SOURCE_DEB)
+	bash functions.sh installPackages $(DISK_QEMU).openstack $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(APT_MOUNT) $(ISO_MOUNT) "$(PACKAGES_BOOT)"
+	bash functions.sh installPackages $(DISK_QEMU).openstack $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(APT_MOUNT) $(ISO_MOUNT) "$(PACKAGES_LIST)"
+	bash functions.sh installBootloader $(DISK_QEMU).openstack $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(ISO_MOUNT) $(NAME)
+	bash functions.sh installOverlay $(DISK_QEMU).openstack $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(WORKSPACE)
+	bash functions.sh installConfiguration $(DISK_QEMU).openstack $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(ISO_MOUNT) $(NAME) $(VERSION) $(JOB)
+
+	-umount $(ISO_MOUNT)
+	qemu-img convert -O qcow2 $(DISK_QEMU).openstack $(QCOW2)
 	$(call targetLog,-)

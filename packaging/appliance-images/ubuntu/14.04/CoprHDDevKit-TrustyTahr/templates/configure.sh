@@ -21,9 +21,6 @@ EOF
     sed -i -e "s/without-password/yes/g" /etc/ssh/sshd_config
   fi
 
-  echo "127.0.0.1 localhost" >> /etc/hosts
-  echo "127.0.0.1 localhost.localdomain" >> /etc/hosts
-
   sed -i -e "s/^#deb/deb/g" /etc/apt/sources.list
   sed -i -e "/^deb file/d" /etc/apt/sources.list
 
@@ -65,6 +62,11 @@ function installNginx
 
 function installStorageOS
 {
+  grep --quiet localhost /etc/hosts
+  if [ $? -ne 0 ]; then
+    echo "127.0.0.1 localhost" >> /etc/hosts
+    echo "127.0.0.1 localhost.localdomain" >> /etc/hosts
+  fi
   ln -s /bin/cp /usr/bin/cp
   cat > /etc/rc.status << EOF
 #!/bin/bash
@@ -85,6 +87,16 @@ EOF
   getent group storageos || groupadd -g 444 storageos
   getent passwd storageos || useradd -r -d /opt/storageos -c "StorageOS" -g 444 -u 444 -s /bin/bash storageos
   chown storageos:storageos /etc/rc.status
+  if [ -f /opt/ADG/conf/storageos*.deb ]; then
+    export DO_NOT_START=yes
+    dpkg -i /opt/ADG/conf/storageos*.deb
+    echo "manual" > /etc/init/boot-ovfenv.override
+    echo "manual" > /etc/init/nginx.override
+    echo "manual" > /etc/init/keepalived.override
+    /etc/storageos/storageos disable
+    rm /opt/ADG/conf/storageos*.deb
+    unset DO_NOT_START
+  fi
   [ ! -d /opt/storageos ] || chown -R storageos:storageos /opt/storageos
   [ ! -d /data ] || chown -R storageos:storageos /data
 }
@@ -154,7 +166,14 @@ function installNetwork
   chmod 755 /etc/init/ovf-network.conf
   chmod 755 /opt/ADG/conf/ovf-network.sh
   rm /etc/network/interfaces
-  #echo -e "/*" >> /etc/network/interfaces
+  echo "# This file describes the network interfaces available on your system" >> /etc/network/interfaces
+  echo "# and how to activate them. For more information, see interfaces(5)." >> /etc/network/interfaces
+  echo "source /etc/network/interfaces.d/*" >> /etc/network/interfaces
+
+  echo "" >> /etc/network/interfaces
+  echo "# The loopback network interface" >> /etc/network/interfaces
+  echo "auto lo" >> /etc/network/interfaces
+  echo "iface lo inet loopback" >> /etc/network/interfaces
 }
 
 function installNetworkConfigurationFile
