@@ -93,22 +93,18 @@ downloadTGZ:
 createREPO: | downloadISO downloadDEB downloadTGZ
 
 clean:
-	$(call targetLog,+)
-	rm -fr $(WORKSPACE)/build
-	rm -fr $(WORKSPACE)/image
-	rm -fr $(WORKSPACE)/output
-	rm -fr $(WORKSPACE)/dir
-	$(call targetLog,-)
+	@rm -fr $(WORKSPACE)/build
+	@rm -fr $(WORKSPACE)/image
+	@rm -fr $(WORKSPACE)/output
+	@rm -fr $(WORKSPACE)/dir
 
 destroy:
-	$(call targetLog,+)
-	rm -fr $(WORKSPACE)/iso
-	rm -fr $(WORKSPACE)/build
-	rm -fr $(WORKSPACE)/image
-	rm -fr $(WORKSPACE)/output
-	rm -fr $(WORKSPACE)/dir
-	rm -fr $(WORKSPACE)/apt
-	$(call targetLog,-)
+	@rm -fr $(WORKSPACE)/iso
+	@rm -fr $(WORKSPACE)/build
+	@rm -fr $(WORKSPACE)/image
+	@rm -fr $(WORKSPACE)/output
+	@rm -fr $(WORKSPACE)/dir
+	@rm -fr $(WORKSPACE)/apt
 
 #appliance: | vbox ovf vhd vmx box tgz qcow2
 appliance: | ovf vmx box tgz qcow2
