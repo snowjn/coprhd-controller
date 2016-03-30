@@ -131,10 +131,29 @@ parseOVF()
 
 if [ ! -f /etc/ovfenv.properties ]; then
   update-ca-certificates -f
+  mountCDROM
+  if [ -f /tmp/cdromOvfEnv/ovf-env.xml ]; then
+    parseOVF
+  else
+    if [ ! -f /etc/network/interfaces ]; then
+      interface=\$( ip addr | grep BROADCAST,MULTICAST | head -n 1 | tail -n 1 | cut -d ':' -f 2 | tr -d ' ' )
+      echo "# This file describes the network interfaces available on your system" >> /etc/network/interfaces
+      echo "# and how to activate them. For more information, see interfaces(5)." >> /etc/network/interfaces
+      echo "source /etc/network/interfaces.d/*" >> /etc/network/interfaces
+
+      echo "" >> /etc/network/interfaces
+      echo "# The loopback network interface" >> /etc/network/interfaces
+      echo "auto lo" >> /etc/network/interfaces
+      echo "iface lo inet loopback" >> /etc/network/interfaces
+
+      echo "" >> /etc/network/interfaces
+      echo "# The \$interface network interface" >> /etc/network/interfaces
+      echo "auto \$interface" >> /etc/network/interfaces
+      echo "iface \$interface inet dhcp" >> /etc/network/interfaces
+    fi
+  fi
+  umountCDROM
 fi
-mountCDROM
-parseOVF
-umountCDROM
 EOF
 chmod 755 /etc/init.d/ovf-network
 update-rc.d ovf-network defaults
