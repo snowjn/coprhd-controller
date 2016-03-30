@@ -7,7 +7,6 @@
 #  Setup
 ##################################################
 export KERNEL := 4.2.0-27-generic
-export DO_NOT_START := yes
 WORKSPACE := $(shell pwd)
 SHELL := /bin/bash
 NAME := CoprHD-TrustyTahr

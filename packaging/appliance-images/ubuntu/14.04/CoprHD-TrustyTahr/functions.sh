@@ -210,7 +210,9 @@ function installPackages
   # START MOUNT SYSTEM
 
   # INSTALL PACKAGES
+  export DO_NOT_START=yes
   chroot ${DIR_MOUNT} apt-get install -y --force-yes ${PACKAGES_LIST}
+  unset DO_NOT_START
   if [ -f ${DIR_MOUNT}/usr/share/virtualbox/VBoxGuestAdditions.iso ]; then
     chroot ${DIR_MOUNT} mkdir -p /workspace/VBoxGuestAdditions
     chroot ${DIR_MOUNT} mount -o loop,ro /usr/share/virtualbox/VBoxGuestAdditions.iso /workspace/VBoxGuestAdditions
