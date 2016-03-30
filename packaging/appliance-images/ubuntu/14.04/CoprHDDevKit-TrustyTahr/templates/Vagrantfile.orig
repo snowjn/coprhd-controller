@@ -13,6 +13,7 @@ Vagrant.configure(2) do |config|
 
   config.vm.box = "__NAME__.x86_64-__VERSION__.box"
   config.vm.base_mac = "__MAC__"
+  config.vm.hostname = "__NAME__.lan"
   config.vm.synced_folder ".", "/vagrant", disabled: true
   config.vm.network "public_network", ip: "#{node_ip}"
 
