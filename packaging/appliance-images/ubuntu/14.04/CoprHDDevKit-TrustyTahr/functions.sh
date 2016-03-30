@@ -150,6 +150,27 @@ UUID=${UUID}    /       ext4    errors=remount-ro       0       1
 UUID=${SWAP}    none    swap    sw      0       0
 EOF
 
+  cat > ${DIR_MOUNT}/etc/rc.status << EOF
+#!/bin/bash
+function rc_reset {
+  /bin/true
+}
+function rc_failed {
+  /bin/true
+}
+function rc_status {
+  /bin/true
+}
+function rc_exit {
+  /bin/true
+}
+EOF
+
+  chroot ${DIR_MOUNT} chmod a+x /etc/rc.status
+  chroot ${DIR_MOUNT} groupadd -g 444 storageos
+  chroot ${DIR_MOUNT} useradd -r -d /opt/storageos -c "StorageOS" -g 444 -u 444 -s /bin/bash storageos
+  chroot ${DIR_MOUNT} chown storageos:storageos /etc/rc.status
+
   # END MOUNT IMAGE
   umount ${DIR_MOUNT}/tmp/archives
   umount ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
@@ -216,7 +237,6 @@ function installPackages
   umount ${DIR_MOUNT}/dev/pts
   umount ${DIR_MOUNT}/proc
   umount ${DIR_MOUNT}/sys
-  umount ${DIR_MOUNT}/dev
   umount ${DIR_MOUNT}/tmp/archives
   umount ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
   umount ${DIR_MOUNT}
@@ -378,7 +398,7 @@ function installConfiguration
   LOOP_DISK1=$( losetup -f )
   losetup -o $((${SECTOR_SIZE}*${SECTOR_INIT})) ${LOOP_DISK1} ${LOOP_DISK0}
   mount ${LOOP_DISK1} ${DIR_MOUNT}
-  mount --bind ${ISO_MOUNT} ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
+  #mount --bind ${ISO_MOUNT} ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
   # START MOUNT IMAGE
 
   cat << EOF | chroot ${DIR_MOUNT} passwd root
@@ -397,6 +417,8 @@ EOF
 
   chroot ${DIR_MOUNT} bash /tmp/templates/config.sh
   rm -fr /tmp/templates
+  rm -fr ${DIR_MOUNT}/tmp/archives
+  rm -fr ${DIR_MOUNT}/tmp/iso
 
   # Clean up / Updates
   sed -i -e "s/^#deb/deb/g" ${DIR_MOUNT}/etc/apt/sources.list
@@ -406,7 +428,7 @@ EOF
   rm ${DIR_MOUNT}/etc/legal
 
   # END MOUNT IMAGE
-  umount ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
+  #umount ${DIR_MOUNT}/tmp/iso/${ISO_MOUNT}
   umount ${DIR_MOUNT}
   losetup -d ${LOOP_DISK1}
   losetup -d ${LOOP_DISK0}
