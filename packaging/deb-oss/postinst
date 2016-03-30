@@ -19,11 +19,6 @@ if [ -z "${DO_NOT_START}" ] ; then
     service keepalived start
     start nginx
     /etc/storageos/storageos start
-else
-    echo "manual" > /etc/init/keepalived.override
-    echo "manual" > /etc/init/nginx.override
-    echo "manual" > /etc/init/boot-ovfenv.override
-    /etc/storageos/storageos disable
 fi
 
 exit 0
