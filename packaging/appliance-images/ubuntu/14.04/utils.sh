@@ -49,6 +49,10 @@ EOF
     network_vip+=($(docker inspect -f {{.NetworkSettings.IPAddress}} vipr$i))
     network_vip6+=($(docker inspect -f {{.NetworkSettings.GlobalIPv6Address}} vipr$i))
   done
+  if [ ${node_count} -eq 1 ]; then
+    vip=${network_vip[1]}
+    vip6=${network_vip6[1]}    
+  fi
 
   for i in $(seq 1 ${node_count}); do
     echo "#!/bin/bash" > ${workspace}/data.$i/dockerenv.sh
