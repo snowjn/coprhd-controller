@@ -79,7 +79,6 @@ parseOVF()
 }
 
 if [ ! -f /etc/ovfenv.properties ]; then
-  update-ca-certificates -f
   mountCDROM
   if [ -f /tmp/cdromOvfEnv/ovf-env.xml ]; then
     parseOVF

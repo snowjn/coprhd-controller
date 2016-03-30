@@ -27,6 +27,8 @@ EOF
   mkdir -p /workspace
   chmod 1777 /workspace
 
+  update-ca-certificates -f
+  git config --global http.sslverify false
   cp -f /etc/inputrc /etc/inputrc-original
   LineNo=$(grep -A 5 -n ".*Normal keypad and cursor of xterm" /etc/inputrc | grep history-search-backward | cut -d- -f1)
   LineNo="$LineNo "$(grep -A 5 -n ".*Normal keypad and cursor of xterm" /etc/inputrc | grep set-mark | cut -d- -f1)

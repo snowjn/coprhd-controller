@@ -319,6 +319,8 @@ function installContainer
 
   echo '' > ${DIR_MOUNT}/etc/fstab
   echo 'console"' >> ${DIR_MOUNT}/etc/securetty
+  mv ${DIR_MOUNT}/sbin/initctl ${DIR_MOUNT}/sbin/initctl.bin
+  ln -fs /bin/true ${DIR_MOUNT}/sbin/initctl
   rm -fr ${DIR_MOUNT}/run/*
   tar -czf ${TGZ} -C ${DIR_MOUNT} .
 
@@ -373,6 +375,12 @@ function installConfiguration
   mount ${LOOP_DISK1} ${DIR_MOUNT}
   # START MOUNT IMAGE
 
+  # START MOUNT SYSTEM
+  mount --bind /sys ${DIR_MOUNT}/sys
+  mount --bind /proc ${DIR_MOUNT}/proc
+  mount --bind /dev/pts ${DIR_MOUNT}/dev/pts
+  # START MOUNT SYSTEM
+
   echo -n "${NAME}-${VERSION}.${JOB}" > ${DIR_MOUNT}/etc/ImageVersion
   chroot ${DIR_MOUNT} bash /tmp/templates/config.sh
   chroot ${DIR_MOUNT} /usr/sbin/update-initramfs -u
@@ -382,6 +390,9 @@ function installConfiguration
   rm -fr ${DIR_MOUNT}/tmp/iso
 
   # END MOUNT IMAGE
+  umount ${DIR_MOUNT}/dev/pts
+  umount ${DIR_MOUNT}/proc
+  umount ${DIR_MOUNT}/sys
   umount ${DIR_MOUNT}
   losetup -d ${LOOP_DISK1}
   losetup -d ${LOOP_DISK0}

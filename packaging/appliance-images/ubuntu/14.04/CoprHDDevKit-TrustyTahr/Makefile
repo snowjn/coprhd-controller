@@ -151,6 +151,7 @@ $(VMDK): | downloadISO createREPO
 	$(call targetLog,+)
 	mkdir -p $(DIR_MOUNT) $(ISO_MOUNT)
 	-mountpoint -q $(ISO_MOUNT) || mount $(WORKSPACE)/iso/$(ISO_FILE) $(ISO_MOUNT)
+	readlink -f /sbin/initctl | grep -v --quiet /bin/true || udevd &
 
 	mkdir -p $(WORKSPACE)/build/$(NAME)-$(VERSION).$(JOB)
 	mkdir -p $(WORKSPACE)/image
@@ -168,17 +169,18 @@ $(VMDK): | downloadISO createREPO
 	bash functions.sh installConfiguration $(DISK_QEMU) $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(ISO_MOUNT) $(NAME) $(VERSION) $(JOB)
 	qemu-img convert -p -O vmdk $(DISK_QEMU) $(VMDK)
 
+	readlink -f /sbin/initctl | grep -v --quiet /bin/true || pkill udevd
 	-umount $(ISO_MOUNT)
 	$(call targetLog,-)
 
 $(VBOX): | $(VMDK)
 	$(call targetLog,+)
 	[ -f $(BUILD_DIR)/$(NAME).x86_64-$(VERSION).$(JOB).vmdk ] || cp $(VMDK) $(BUILD_DIR)/$(NAME).x86_64-$(VERSION).$(JOB).vmdk
-	VBoxManage createvm --name "$(NAME)-$(VERSION).$(JOB)" --basefolder $(WORKSPACE)/build  --register
-	VBoxManage modifyvm "$(NAME)-$(VERSION).$(JOB)" --memory $(RAM) --cpus 1 --acpi on --boot1 dvd --nic1 bridged --bridgeadapter1 eth0 --ostype Linux_64
-	VBoxManage storagectl "$(NAME)-$(VERSION).$(JOB)" --name "IDE Controller" --add ide
-	VBoxManage storageattach "$(NAME)-$(VERSION).$(JOB)" --storagectl "IDE Controller" --port 0 --device 0 --type hdd --medium $(BUILD_DIR)/$(NAME).x86_64-$(VERSION).$(JOB).vmdk
-	VBoxManage unregistervm "$(NAME)-$(VERSION).$(JOB)"
+	VBoxManage createvm --name "$(NAME)-$(VERSION).$(JOB)" --basefolder $(WORKSPACE)/build  --register &> /dev/null
+	VBoxManage modifyvm "$(NAME)-$(VERSION).$(JOB)" --memory $(RAM) --cpus 1 --acpi on --boot1 dvd --nic1 bridged --bridgeadapter1 eth0 --ostype Linux_64 &> /dev/null
+	VBoxManage storagectl "$(NAME)-$(VERSION).$(JOB)" --name "IDE Controller" --add ide &> /dev/null
+	VBoxManage storageattach "$(NAME)-$(VERSION).$(JOB)" --storagectl "IDE Controller" --port 0 --device 0 --type hdd --medium $(BUILD_DIR)/$(NAME).x86_64-$(VERSION).$(JOB).vmdk &> /dev/null
+	VBoxManage unregistervm "$(NAME)-$(VERSION).$(JOB)" &> /dev/null
 	rm -fr "$(HOME)/.config/VirtualBox/$(OUTPUT_DIR)
 	sed -i 's|$(BUILD_DIR)/||g' $(VBOX)
 	rm $(VBOX)-prev
@@ -188,18 +190,18 @@ $(VBOX): | $(VMDK)
 $(OVF): | $(VMDK)
 	$(call targetLog,+)
 	ln -fs $(NAME).x86_64-$(VERSION).$(JOB).vmdk $(OUTPUT_DIR)/disk.vmdk
-	VBoxManage createvm --name "$(NAME)-$(VERSION).$(JOB)" --basefolder $(OUTPUT_DIR) --register
-	VBoxManage modifyvm "$(NAME)-$(VERSION).$(JOB)" --memory $(RAM) --cpus 1 --acpi on --boot1 dvd --nic1 bridged --bridgeadapter1 eth0 --ostype Linux_64
-	VBoxManage storagectl "$(NAME)-$(VERSION).$(JOB)" --name "IDE Controller" --add ide
-	VBoxManage storageattach "$(NAME)-$(VERSION).$(JOB)" --storagectl "IDE Controller" --port 0 --device 0 --type hdd --medium $(OUTPUT_DIR)/disk.vmdk
-	VBoxManage export "$(NAME)-$(VERSION).$(JOB)" --vsys 0 --product $(NAME) --version $(VERSION).$(JOB) --vendor $(VENDOR) --output $(OVF)
-	VBoxManage unregistervm "$(NAME)-$(VERSION).$(JOB)" --delete
+	VBoxManage createvm --name "$(NAME)-$(VERSION).$(JOB)" --basefolder $(OUTPUT_DIR) --register &> /dev/null
+	VBoxManage modifyvm "$(NAME)-$(VERSION).$(JOB)" --memory $(RAM) --cpus 1 --acpi on --boot1 dvd --nic1 bridged --bridgeadapter1 eth0 --ostype Linux_64 &> /dev/null
+	VBoxManage storagectl "$(NAME)-$(VERSION).$(JOB)" --name "IDE Controller" --add ide &> /dev/null
+	VBoxManage storageattach "$(NAME)-$(VERSION).$(JOB)" --storagectl "IDE Controller" --port 0 --device 0 --type hdd --medium $(OUTPUT_DIR)/disk.vmdk &> /dev/null
+	VBoxManage export "$(NAME)-$(VERSION).$(JOB)" --vsys 0 --product $(NAME) --version $(VERSION).$(JOB) --vendor $(VENDOR) --output $(OVF) &> /dev/null
+	VBoxManage unregistervm "$(NAME)-$(VERSION).$(JOB)" --delete &> /dev/null
 	bash functions.sh updateOVF $(OVF)
 	$(call targetLog,-)
 
 $(VHD): | $(VMDK)
 	$(call targetLog,+)
-	VBoxManage clonehd $(VMDK) $(VHD) -format VHD
+	VBoxManage clonehd $(VMDK) $(VHD) -format VHD &> /dev/null
 	$(call targetLog,-)
 
 $(VMX): | $(VMDK)
@@ -238,12 +240,12 @@ $(BOX): | $(VMDK)
 	cp $(DISK_QEMU) $(DISK_QEMU).vagrant
 	bash functions.sh installVagrant $(DISK_QEMU).vagrant $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(WORKSPACE)
 	qemu-img convert -p -O vmdk $(DISK_QEMU).vagrant $(OUTPUT_DIR)/box/$(NAME).x86_64-$(VERSION).$(JOB).vmdk
-	VBoxManage createvm --name "$(NAME)-$(VERSION).$(JOB)" --basefolder $(OUTPUT_DIR)/box --register
-	VBoxManage modifyvm "$(NAME)-$(VERSION).$(JOB)" --memory $(RAM) --cpus 1 --acpi on --boot1 dvd --nic1 bridged --bridgeadapter1 eth0 --ostype Linux_64
-	VBoxManage storagectl "$(NAME)-$(VERSION).$(JOB)" --name "IDE Controller" --add ide
-	VBoxManage storageattach "$(NAME)-$(VERSION).$(JOB)" --storagectl "IDE Controller" --port 0 --device 0 --type hdd --medium $(OUTPUT_DIR)/box/$(NAME).x86_64-$(VERSION).$(JOB).vmdk
-	VBoxManage export "$(NAME)-$(VERSION).$(JOB)" --vsys 0 --product $(NAME) --version $(VERSION).$(JOB) --vendor $(VENDOR) --output $(OUTPUT_DIR)/box/box.ovf
-	VBoxManage unregistervm "$(NAME)-$(VERSION).$(JOB)" --delete
+	VBoxManage createvm --name "$(NAME)-$(VERSION).$(JOB)" --basefolder $(OUTPUT_DIR)/box --register &> /dev/null
+	VBoxManage modifyvm "$(NAME)-$(VERSION).$(JOB)" --memory $(RAM) --cpus 1 --acpi on --boot1 dvd --nic1 bridged --bridgeadapter1 eth0 --ostype Linux_64 &> /dev/null
+	VBoxManage storagectl "$(NAME)-$(VERSION).$(JOB)" --name "IDE Controller" --add ide &> /dev/null
+	VBoxManage storageattach "$(NAME)-$(VERSION).$(JOB)" --storagectl "IDE Controller" --port 0 --device 0 --type hdd --medium $(OUTPUT_DIR)/box/$(NAME).x86_64-$(VERSION).$(JOB).vmdk &> /dev/null
+	VBoxManage export "$(NAME)-$(VERSION).$(JOB)" --vsys 0 --product $(NAME) --version $(VERSION).$(JOB) --vendor $(VENDOR) --output $(OUTPUT_DIR)/box/box.ovf &> /dev/null
+	VBoxManage unregistervm "$(NAME)-$(VERSION).$(JOB)" --delete &> /dev/null
 	bash functions.sh updateOVF $(OUTPUT_DIR)/box/box.ovf
 	echo '{ "provider" : "virtualbox", "format" : "vmdk" }' > $(OUTPUT_DIR)/box/metadata.json
 	tar -czf $(BOX) -C $(OUTPUT_DIR)/box box.ovf metadata.json box-disk1.vmdk
@@ -264,6 +266,7 @@ $(QCOW2): | downloadISO createREPO
 	$(call targetLog,+)
 	mkdir -p $(DIR_MOUNT) $(ISO_MOUNT)
 	-mountpoint -q $(ISO_MOUNT) || mount $(WORKSPACE)/iso/$(ISO_FILE) $(ISO_MOUNT)
+	readlink -f /sbin/initctl | grep -v --quiet /bin/true || udevd &
 
 	mkdir -p $(WORKSPACE)/build/$(NAME)-$(VERSION).$(JOB)
 	mkdir -p $(WORKSPACE)/image
@@ -280,6 +283,7 @@ $(QCOW2): | downloadISO createREPO
 	bash functions.sh installOverlay $(DISK_QEMU).openstack $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(WORKSPACE)
 	bash functions.sh installConfiguration $(DISK_QEMU).openstack $(SECTOR_INIT) $(SECTOR_SIZE) $(DIR_MOUNT) $(ISO_MOUNT) $(NAME) $(VERSION) $(JOB)
 
+	readlink -f /sbin/initctl | grep -v --quiet /bin/true || pkill udevd
 	-umount $(ISO_MOUNT)
 	qemu-img convert -O qcow2 $(DISK_QEMU).openstack $(QCOW2)
 	$(call targetLog,-)
